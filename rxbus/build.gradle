@@ -1,0 +1,14 @@
+apply plugin: 'java-library'
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation group: 'io.reactivex.rxjava2', name: 'rxjava', version: '2.1.2'
+
+    // https://mvnrepository.com/artifact/com.jakewharton.rxrelay2/rxrelay
+    implementation('com.jakewharton.rxrelay2:rxrelay:2.0.0'){
+        exclude group: 'io.reactivex.rxjava2',module: 'rxjava'
+    }
+}
+
+sourceCompatibility = "1.7"
+targetCompatibility = "1.7"
