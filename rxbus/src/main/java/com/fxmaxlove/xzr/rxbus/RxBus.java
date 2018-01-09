@@ -1,5 +1,7 @@
 package com.fxmaxlove.xzr.rxbus;
 
+import android.util.Log;
+
 import com.fxmaxlove.xzr.rxbus.annotation.RxSubscribe;
 import com.fxmaxlove.xzr.rxbus.util.EventThread;
 import com.jakewharton.rxrelay2.PublishRelay;
@@ -19,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import io.reactivex.Flowable;
 import io.reactivex.Observable;
 import io.reactivex.ObservableSource;
-import io.reactivex.Observer;
+import io.reactivex.Scheduler;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.annotations.Nullable;
 import io.reactivex.disposables.CompositeDisposable;
@@ -48,7 +50,7 @@ public class RxBus extends BaseBus {
      * 获取RxBus单例
      *
      */
-    public static RxBus getInstance() {
+    public static RxBus getDefault() {
         if (defaultBus == null) {
             synchronized (RxBus.class) {
                 if (defaultBus == null) {
@@ -70,6 +72,22 @@ public class RxBus extends BaseBus {
      */
     public RxBus() {
         this(PublishRelay.create());
+    }
+
+    public <T> Observable<T> toObservable(Class<T> eventType) {
+        return defaultBus.ofType(eventType).observeOn(EventThread.getScheduler(EventThread.MAIN));
+    }
+
+    public <T> Observable<T> toObservable(Class<T> eventType,Scheduler scheduler) {
+        return defaultBus.ofType(eventType).observeOn(scheduler);
+    }
+
+    public <T> Observable<T> toStickyObservable(Class<T> eventType) {
+        return defaultBus.ofStickyType(eventType).observeOn(EventThread.getScheduler(EventThread.MAIN));
+    }
+
+    public <T> Observable<T> toStickyObservable(Class<T> eventType,Scheduler scheduler) {
+        return defaultBus.ofStickyType(eventType).observeOn(scheduler);
     }
 
     /**
@@ -173,7 +191,7 @@ public class RxBus extends BaseBus {
                 }, new Consumer<Throwable>() {
                     @Override
                     public void accept(Throwable throwable) throws Exception {
-                        LoggerUtil.error(throwable, "Dispose subscription");
+                        Log.e("rebus--reset",throwable.toString());
                     }
                 }, new Action() {
                     @Override
@@ -202,23 +220,18 @@ public class RxBus extends BaseBus {
                     @Override
                     public boolean test(Object obj) throws Exception {
                         boolean registered = isRegistered(obj);
-                        if (registered) {
-                            LoggerUtil.warning("%s has already registered", obj);
-                        }
                         return !registered;
                     }
                 })
                 .flatMap(new Function<Object, ObservableSource<Method>>() {
                     @Override
                     public ObservableSource<Method> apply(Object obj) throws Exception {
-                        LoggerUtil.debug("start to analyze subscriber: %s", obj);
                         return Observable.fromArray(obj.getClass().getDeclaredMethods());
                     }
                 })
                 .map(new Function<Method, Method>() {
                     @Override
                     public Method apply(Method method) throws Exception {
-                        LoggerUtil.debug("Set method can accessible: %s ", method);
                         method.setAccessible(true);
                         return method;
                     }
@@ -227,7 +240,6 @@ public class RxBus extends BaseBus {
                     @Override
                     public boolean test(Method method) throws Exception {
                         boolean isOK = method.isAnnotationPresent(RxSubscribe.class) && method.getParameterTypes() != null && method.getParameterTypes().length > 0;
-                        LoggerUtil.debug("%s is has RxSubscribe annotation: %s", method, isOK);
                         return isOK;
                     }
                 })
@@ -236,18 +248,18 @@ public class RxBus extends BaseBus {
                 .subscribe(new Consumer<Method>() {
                     @Override
                     public void accept(Method method) throws Exception {
-                        LoggerUtil.debug("now start add subscription method: %s", method);
                         addSubscriptionMethod(subscriber, method);
                     }
                 }, new Consumer<Throwable>() {
                     @Override
                     public void accept(Throwable throwable) throws Exception {
-                        LoggerUtil.error(throwable, "%s fail register", subscriber);
+                        throwable.printStackTrace();
+                        Log.e("rxbus--register",throwable.toString());
                     }
                 }, new Action() {
                     @Override
                     public void run() throws Exception {
-                        LoggerUtil.debug("%s register complete", subscriber);
+                        Log.d("rxbus--register","register complete");
                     }
                 });
     }
@@ -255,17 +267,10 @@ public class RxBus extends BaseBus {
     private void addSubscriptionMethod(final Object subscriber, final Method method) {
         Disposable subscribe =
                 Observable.just(method.getParameterTypes()[0])
-                        .doOnNext(new Consumer<Class<?>>() {
-                            @Override
-                            public void accept(Class<?> type) throws Exception {
-                                LoggerUtil.debug("Origin: [method: %s ] , param[0] type: %s", method, type);
-                            }
-                        })
                         .map(new Function<Class<?>, Class<?>>() {
                             @Override
                             public Class<?> apply(Class<?> type) throws Exception {
                                 Class<?> eventType = getEventType(type);
-                                LoggerUtil.debug("Listen event type: %s", eventType);
                                 return eventType;
                             }
                         })
@@ -273,7 +278,6 @@ public class RxBus extends BaseBus {
                             @Override
                             public ObservableSource<?> apply(Class<?> type) throws Exception {
                                 RxSubscribe rxAnnotation = method.getAnnotation(RxSubscribe.class);
-                                LoggerUtil.debug("%s RxSubscribe Annotation: %s", method, rxAnnotation.observeOnThread());
                                 Observable<?> observable = rxAnnotation.isSticky() ? ofStickyType(type) : ofType(type);
                                 observable.observeOn(EventThread.getScheduler(rxAnnotation.observeOnThread()));
                                 return observable;
@@ -284,19 +288,18 @@ public class RxBus extends BaseBus {
                                     @Override
                                     @SuppressWarnings("all")
                                     public void accept(Object obj) throws Exception {
-                                        LoggerUtil.debug("Subscriber:%s invoke Method:%s", subscriber, method);
                                         try {
                                             method.invoke(subscriber, obj);
                                         } catch (IllegalAccessException e) {
-                                            LoggerUtil.error(e, "%s invoke error", method);
+                                            e.printStackTrace();
                                         } catch (InvocationTargetException e) {
-                                            LoggerUtil.error(e, "%s invoke error", method);
+                                            e.printStackTrace();
                                         }
                                     }
                                 }, new Consumer<Throwable>() {
                                     @Override
                                     public void accept(Throwable throwable) throws Exception {
-                                        LoggerUtil.error(throwable, "%s can't invoke %s", subscriber, method);
+                                        throwable.printStackTrace();
                                     }
                                 });
         CompositeDisposable compositeDisposable = subscriptions.get(subscriber.hashCode());
@@ -305,7 +308,7 @@ public class RxBus extends BaseBus {
         }
         compositeDisposable.add(subscribe);
         subscriptions.put(subscriber.hashCode(), compositeDisposable);
-        LoggerUtil.debug("Registered %s", method);
+        Log.d("rxbus--method", method.toString()+"has Registered");
     }
 
     /**
@@ -336,17 +339,16 @@ public class RxBus extends BaseBus {
                     public void onNext(CompositeDisposable compositeDisposable) {
                         compositeDisposable.dispose();
                         subscriptions.remove(subscriber.hashCode());
-                        LoggerUtil.debug("remove subscription of %s", subscriber);
                     }
 
                     @Override
                     public void onError(Throwable t) {
-                        LoggerUtil.error(t, "%s unregister RxBus", subscriber);
+                        t.printStackTrace();
                     }
 
                     @Override
                     public void onComplete() {
-                        LoggerUtil.debug("%s unregister RxBus completed!", subscriber);
+
                     }
                 });
     }

@@ -5,10 +5,13 @@ buildscript {
     repositories {
         google()
         jcenter()
+        maven{
+            url "http://172.20.10.54:8081/nexus/content/repositories/jcenter/"
+        }
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:3.0.1'
-        
+
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
@@ -19,6 +22,25 @@ allprojects {
     repositories {
         google()
         jcenter()
+        maven{
+            url "http://172.20.10.54:8081/nexus/content/repositories/releases/"
+        }
+        // 私有 snapshot 地址
+        maven{
+            url "http://172.20.10.54:8081/nexus/content/repositories/snapshots/"
+        }
+        //jcenter 代理
+        maven{
+            url "http://172.20.10.54:8081/nexus/content/repositories/jcenter/"
+        }
+        // maven 代理
+        maven{
+            url "http://172.20.10.54:8081/nexus/content/repositories/central/"
+        }
+
+        maven {
+            url 'https://github.com/uPhyca/stetho-realm/raw/master/maven-repo'
+        }
     }
 }
 
