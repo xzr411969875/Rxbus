@@ -7,22 +7,39 @@ Application中初始化BaseBus.config(AndroidSchedulers.mainThread());
 ## 发送事件:
 普通事件:RxBus.getDefault().post(event); 发粘滞事件:RxBus.getDefault().postSticky(event)
 ⼿手动订阅:
-在类⾥里里创建⼀一个对象:CompositeDisposable mCompositeDisposable = new CompositeDisposable();
-普通事件举例例:Disposable subscribe = RxBus.getDefault().toObservable(String.class).subscribe(new Consumer<String>() {
+在类⾥里里创建⼀一个对象:
+```
+CompositeDisposable mCompositeDisposable = new CompositeDisposable();
+```
+
+
+普通事件举例例:
+```
+Disposable subscribe = RxBus.getDefault().toObservable(String.class).subscribe(new Consumer<String>() {
 @Override
 public void accept(String s) throws Exception { }
-}); mCompositeDisposable.add(subscribe);
-粘滞事件:Disposable subscribe = RxBus.getDefault().toStickyObservable(String.class).subscribe(new Consumer<String>() {
+}); 
+mCompositeDisposable.add(subscribe);
+```
+粘滞事件:
+```
+Disposable subscribe = RxBus.getDefault().toStickyObservable(String.class).subscribe(new Consumer<String>() {
 @Override
 public void accept(String s) throws Exception { }
-}); mCompositeDisposable.add(subscribe);
+});
+mCompositeDisposable.add(subscribe);
+```
+
 类⽣生命周期结束时解除订阅
+```
 @Override
 protected void onDestroy() {
 super.onDestroy();
 if (mCompositeDisposable != null) {
 mCompositeDisposable.clear(); }
 }
+```
+
 ## 注解⽅方式订阅:
 普通事件:
 @RxSubscribe(observeOnThread = EventThread.MAIN) public void listenRxIntegerEvent(int code) {
