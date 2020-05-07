@@ -42,21 +42,37 @@ mCompositeDisposable.clear(); }
 
 ## 注解⽅方式订阅:
 普通事件:
-@RxSubscribe(observeOnThread = EventThread.MAIN) public void listenRxIntegerEvent(int code) {
+```
+@RxSubscribe(observeOnThread = EventThread.MAIN) 
+public void listenRxIntegerEvent(int code) {
 }
+```
+
 粘滞事件:
-@RxSubscribe(observeOnThread = EventThread.IO,isSticky = true) public void listenRxStringEvent(String event) {
+```
+@RxSubscribe(observeOnThread = EventThread.IO,isSticky = true) 
+public void listenRxStringEvent(String event) {
 }
+```
+
 ## 注册和取消注册订阅事件:
+```
 @Override
 protected void onCreate(@Nullable Bundle savedInstanceState) {
 super.onCreate(savedInstanceState); setContentView(R.layout.activity_rx_bus); RxBus.getDefault().register(this);
 } @Override
-protected void onDestroy() { super.onDestroy();
-RxBus.getDefault().unregister(this); }
+protected void onDestroy() { 
+super.onDestroy();
+RxBus.getDefault().unregister(this); 
+}
+```
+
 ## 混淆:
- -keep class com.fxmaxlove.xzr.** { *; }
+```
+-keep class com.fxmaxlove.xzr.** { *; }
  -keepclasseswithmembers class * {
- @com.fxmaxlove.xzr.rxbus.annotation.RxSubscr
- ibe <methods>;
+ @com.fxmaxlove.xzr.rxbus.annotation.RxSubscribe <methods>;
+ }
+```
+ 
  
